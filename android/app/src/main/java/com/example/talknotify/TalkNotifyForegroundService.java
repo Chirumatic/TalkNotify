@@ -152,6 +152,12 @@ public class TalkNotifyForegroundService extends Service implements TextToSpeech
         return prefs.getBoolean("driving_mode", false);
     }
 
+    /** Check if group messages should be skipped */
+    public boolean isSkipGroupMessages() {
+        SharedPreferences prefs = getSharedPreferences("talknotify_prefs", Context.MODE_PRIVATE);
+        return prefs.getBoolean("skip_group_messages", false);
+    }
+
     /** Set driving mode */
     public void setDrivingMode(boolean enabled) {
         SharedPreferences prefs = getSharedPreferences("talknotify_prefs", Context.MODE_PRIVATE);

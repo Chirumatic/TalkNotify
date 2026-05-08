@@ -87,13 +87,22 @@ class AppProvider with ChangeNotifier {
 
   /// Add new message
   Future<void> addMessage(MessageModel message) async {
+    // Per-app filter — skip if this app is disabled
+    if (!_settings.isAppEnabled(message.appSource)) return;
+
+    // Group message filter
+    if (_settings.skipGroupMessages && message.isGroupMessage) return;
+
     final savedMessage = await _dbService.insertMessage(message);
     _latestMessage = savedMessage;
     _messageHistory.insert(0, savedMessage);
     notifyListeners();
 
-    // In driving mode — always read full message aloud
-    if (_settings.drivingModeEnabled) {
+    // Priority contacts — always read aloud regardless of other settings
+    final isPriority = _settings.isPriorityContact(message.senderName);
+
+    // In driving mode or priority contact — always read full message aloud
+    if (_settings.drivingModeEnabled || isPriority) {
       await _ttsService.readMessage(savedMessage);
       return;
     }
@@ -167,7 +176,7 @@ class AppProvider with ChangeNotifier {
   Future<void> _processVoiceCommand(String command) async {
     final lowerCommand = command.toLowerCase();
 
-    // Wake word check — "hey talknotify"
+    // Wake word
     if (lowerCommand.contains('hey talknotify') || lowerCommand.contains('hey talk notify')) {
       await _ttsService.speak('Yes, I am listening');
       await startListening();
@@ -200,13 +209,39 @@ class AppProvider with ChangeNotifier {
     } else if (lowerCommand.contains('driving mode off')) {
       await saveSettings(_settings.copyWith(drivingModeEnabled: false));
       await _ttsService.speak('Driving mode deactivated.');
-    } else if (lowerCommand.contains('how many messages') || lowerCommand.contains('unread')) {
+    } else if (lowerCommand.contains('summarize') || lowerCommand.contains('summary')) {
+      await _speakMessageSummary();
+    } else if (lowerCommand.contains('how many') || lowerCommand.contains('unread')) {
       final unread = _messageHistory.where((m) => !m.isRead).length;
       await _ttsService.speak('You have $unread unread messages.');
     } else {
-      // Unknown command
       await _ttsService.speak('Sorry, I did not understand that command.');
     }
+  }
+
+  /// Speak a summary of recent unread messages (public)
+  Future<void> speakMessageSummary() => _speakMessageSummary();
+
+  /// Speak a summary of recent unread messages
+  Future<void> _speakMessageSummary() async {
+    final unread = _messageHistory.where((m) => !m.isRead).toList();
+    if (unread.isEmpty) {
+      await _ttsService.speak('You have no unread messages.');
+      return;
+    }
+
+    // Group by sender
+    final Map<String, int> senderCounts = {};
+    for (final msg in unread) {
+      senderCounts[msg.senderName] = (senderCounts[msg.senderName] ?? 0) + 1;
+    }
+
+    final buffer = StringBuffer('You have ${unread.length} unread messages. ');
+    senderCounts.forEach((sender, count) {
+      buffer.write('$count from $sender. ');
+    });
+
+    await _ttsService.speak(buffer.toString());
   }
 
   /// Filter messages by app

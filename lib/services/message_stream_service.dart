@@ -13,11 +13,19 @@ class MessageStreamService {
   Stream<MessageModel> get messageStream {
     return _eventChannel.receiveBroadcastStream().map((event) {
       final data = Map<String, dynamic>.from(event as Map);
+
+      // appSource format: "WhatsApp|direct" or "WhatsApp|group"
+      final rawSource = data['appSource'] as String? ?? 'Unknown';
+      final parts = rawSource.split('|');
+      final appSource = parts[0];
+      final isGroup = parts.length > 1 && parts[1] == 'group';
+
       return MessageModel(
         senderName: data['sender'] ?? 'Unknown',
         messageContent: data['message'] ?? '',
-        appSource: data['appSource'] ?? 'Unknown',
+        appSource: appSource,
         timestamp: DateTime.now(),
+        isGroupMessage: isGroup,
       );
     });
   }

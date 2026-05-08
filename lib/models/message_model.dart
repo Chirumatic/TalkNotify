@@ -6,6 +6,7 @@ class MessageModel {
   final String appSource;
   final DateTime timestamp;
   final bool isRead;
+  final bool isGroupMessage;
 
   MessageModel({
     this.id,
@@ -14,9 +15,9 @@ class MessageModel {
     required this.appSource,
     required this.timestamp,
     this.isRead = false,
+    this.isGroupMessage = false,
   });
 
-  /// Convert to Map for database storage
   Map<String, dynamic> toMap() {
     return {
       'id': id,
@@ -25,10 +26,10 @@ class MessageModel {
       'appSource': appSource,
       'timestamp': timestamp.toIso8601String(),
       'isRead': isRead ? 1 : 0,
+      'isGroupMessage': isGroupMessage ? 1 : 0,
     };
   }
 
-  /// Create from Map (database)
   factory MessageModel.fromMap(Map<String, dynamic> map) {
     return MessageModel(
       id: map['id'],
@@ -37,10 +38,10 @@ class MessageModel {
       appSource: map['appSource'],
       timestamp: DateTime.parse(map['timestamp']),
       isRead: map['isRead'] == 1,
+      isGroupMessage: (map['isGroupMessage'] ?? 0) == 1,
     );
   }
 
-  /// Create a copy with modified fields
   MessageModel copyWith({
     int? id,
     String? senderName,
@@ -48,6 +49,7 @@ class MessageModel {
     String? appSource,
     DateTime? timestamp,
     bool? isRead,
+    bool? isGroupMessage,
   }) {
     return MessageModel(
       id: id ?? this.id,
@@ -56,6 +58,7 @@ class MessageModel {
       appSource: appSource ?? this.appSource,
       timestamp: timestamp ?? this.timestamp,
       isRead: isRead ?? this.isRead,
+      isGroupMessage: isGroupMessage ?? this.isGroupMessage,
     );
   }
 }

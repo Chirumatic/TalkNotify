@@ -31,6 +31,7 @@ class SettingsService {
     await _prefs!.setString('priorityContacts', s.priorityContacts);
     await _prefs!.setString('autoReplyMessage', s.autoReplyMessage);
     await _prefs!.setBool('autoReplyEnabled', s.autoReplyEnabled);
+    await _prefs!.setBool('skipGroupMessages', s.skipGroupMessages);
   }
 
   Future<AppSettings> loadSettings() async {
@@ -55,6 +56,7 @@ class SettingsService {
       priorityContacts: _prefs!.getString('priorityContacts') ?? '',
       autoReplyMessage: _prefs!.getString('autoReplyMessage') ?? "I'm driving, will reply soon.",
       autoReplyEnabled: _prefs!.getBool('autoReplyEnabled') ?? false,
+      skipGroupMessages: _prefs!.getBool('skipGroupMessages') ?? false,
     );
   }
 

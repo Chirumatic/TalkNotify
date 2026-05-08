@@ -38,7 +38,8 @@ class DatabaseService {
         messageContent $textType,
         appSource $textType,
         timestamp $textType,
-        isRead $intType
+        isRead $intType,
+        isGroupMessage INTEGER NOT NULL DEFAULT 0
       )
     ''');
   }

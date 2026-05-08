@@ -22,6 +22,8 @@ class AppSettings {
   // Auto-reply message
   final String autoReplyMessage;
   final bool autoReplyEnabled;
+  // Group message filter
+  final bool skipGroupMessages;
 
   AppSettings({
     this.voiceAlertsEnabled = true,
@@ -43,6 +45,7 @@ class AppSettings {
     this.priorityContacts = '',
     this.autoReplyMessage = "I'm driving, will reply soon.",
     this.autoReplyEnabled = false,
+    this.skipGroupMessages = false,
   });
 
   /// Check if a given app source is enabled
@@ -91,6 +94,7 @@ class AppSettings {
     String? priorityContacts,
     String? autoReplyMessage,
     bool? autoReplyEnabled,
+    bool? skipGroupMessages,
   }) {
     return AppSettings(
       voiceAlertsEnabled: voiceAlertsEnabled ?? this.voiceAlertsEnabled,
@@ -112,6 +116,7 @@ class AppSettings {
       priorityContacts: priorityContacts ?? this.priorityContacts,
       autoReplyMessage: autoReplyMessage ?? this.autoReplyMessage,
       autoReplyEnabled: autoReplyEnabled ?? this.autoReplyEnabled,
+      skipGroupMessages: skipGroupMessages ?? this.skipGroupMessages,
     );
   }
 
@@ -136,6 +141,7 @@ class AppSettings {
       'priorityContacts': priorityContacts,
       'autoReplyMessage': autoReplyMessage,
       'autoReplyEnabled': autoReplyEnabled,
+      'skipGroupMessages': skipGroupMessages,
     };
   }
 
@@ -160,6 +166,7 @@ class AppSettings {
       priorityContacts: map['priorityContacts'] ?? '',
       autoReplyMessage: map['autoReplyMessage'] ?? "I'm driving, will reply soon.",
       autoReplyEnabled: map['autoReplyEnabled'] ?? false,
+      skipGroupMessages: map['skipGroupMessages'] ?? false,
     );
   }
 }

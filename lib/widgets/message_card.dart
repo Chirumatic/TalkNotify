@@ -133,6 +133,18 @@ class MessageCard extends StatelessWidget {
                             ),
                           ),
                         ),
+                        // Group badge
+                        if (message.isGroupMessage)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.purple.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: const Text('Group',
+                              style: TextStyle(fontSize: 10, color: Colors.purple,
+                                fontWeight: FontWeight.w600)),
+                          ),
                         // Unread dot
                         if (!message.isRead)
                           Container(

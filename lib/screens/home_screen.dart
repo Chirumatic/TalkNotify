@@ -109,7 +109,17 @@ class _DashboardTab extends StatelessWidget {
             // Quick stats
             _QuickStats(provider: provider),
 
-            const SizedBox(height: 24),
+            const SizedBox(height: 16),
+
+            // Message summary button
+            _MessageSummaryButton(),
+
+            const SizedBox(height: 16),
+
+            // Wake word hint
+            _WakeWordHint(),
+
+            const SizedBox(height: 16),
 
             // Voice commands help
             const _VoiceCommandsHelp(),
@@ -415,6 +425,48 @@ class _VoiceCommandsHelp extends StatelessWidget {
             )),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Button to hear a spoken summary of unread messages
+class _MessageSummaryButton extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final provider = context.read<AppProvider>();
+    final unread = context.watch<AppProvider>().messageHistory.where((m) => !m.isRead).length;
+
+    return OutlinedButton.icon(
+      onPressed: () => provider.speakMessageSummary(),
+      icon: const Icon(Icons.summarize),
+      label: Text('Summarize ($unread unread)'),
+      style: OutlinedButton.styleFrom(
+        minimumSize: const Size(double.infinity, 48),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppConstants.radiusMedium)),
+      ),
+    );
+  }
+}
+
+/// Small hint showing the wake word
+class _WakeWordHint extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: AppConstants.primaryColor.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: const [
+          Icon(Icons.mic_none, size: 16, color: AppConstants.primaryColor),
+          SizedBox(width: 6),
+          Text('Say "Hey TalkNotify" to activate',
+            style: TextStyle(fontSize: 12, color: AppConstants.primaryColor)),
+        ],
       ),
     );
   }

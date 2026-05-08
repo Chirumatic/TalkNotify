@@ -63,15 +63,28 @@ public class NotificationListener extends NotificationListenerService {
         // Skip group summary notifications (they are duplicates)
         if ((notification.flags & Notification.FLAG_GROUP_SUMMARY) != 0) return;
 
-        Log.d(TAG, "New notification from " + appSource + ": " + sender + " - " + message);
+        // Detect group messages:
+        // WhatsApp/Telegram group messages have format "Sender: message text" in the body
+        // and the title is the group name (contains no phone number pattern)
+        boolean isGroupMessage = isGroupMessage(extras, appSource, sender, message);
 
-        // Forward to Flutter via callback
+        Log.d(TAG, "New notification from " + appSource + ": " + sender + " - " + message
+            + (isGroupMessage ? " [GROUP]" : " [DIRECT]"));
+
+        // Forward to Flutter — include isGroup flag so Flutter can filter
         if (callback != null && !message.isEmpty()) {
-            callback.onNotificationReceived(sender, message, appSource);
+            callback.onNotificationReceived(
+                sender,
+                message,
+                appSource + (isGroupMessage ? "|group" : "|direct")
+            );
         }
 
-        // Also announce via foreground service TTS (works when app is closed)
+        // Announce via foreground service TTS
         if (TalkNotifyForegroundService.instance != null && !message.isEmpty()) {
+            // Check if foreground service should skip group messages
+            boolean skipGroups = TalkNotifyForegroundService.instance.isSkipGroupMessages();
+            if (isGroupMessage && skipGroups) return;
             TalkNotifyForegroundService.instance.announceMessage(sender, appSource, message);
         }
     }
@@ -79,5 +92,48 @@ public class NotificationListener extends NotificationListenerService {
     @Override
     public void onNotificationRemoved(StatusBarNotification sbn) {
         // Not needed for now
+    }
+
+    /**
+     * Detect if a notification is from a group chat.
+     *
+     * WhatsApp group messages:
+     *   - EXTRA_TITLE = group name (e.g. "Family Group")
+     *   - EXTRA_TEXT  = "SenderName: message text"
+     *
+     * Telegram group messages:
+     *   - EXTRA_TITLE = group name
+     *   - EXTRA_SUB_TEXT or EXTRA_TEXT contains "SenderName: ..."
+     *
+     * Direct messages have the sender name as the title directly.
+     */
+    private boolean isGroupMessage(Bundle extras, String appSource, String title, String text) {
+        // Method 1: Check EXTRA_CONVERSATION_TITLE (set for group chats on Android)
+        CharSequence convTitle = extras.getCharSequence(Notification.EXTRA_CONVERSATION_TITLE);
+        if (convTitle != null && !convTitle.toString().isEmpty()) {
+            return true;
+        }
+
+        // Method 2: WhatsApp/Telegram group messages have "Sender: text" pattern in body
+        // while the title is the group name
+        if (text.contains(": ")) {
+            // If text starts with "SomeName: " it's likely a group message
+            int colonIndex = text.indexOf(": ");
+            if (colonIndex > 0 && colonIndex < 30) {
+                // Extra check: the part before ":" should not be the same as the title
+                String possibleSender = text.substring(0, colonIndex);
+                if (!possibleSender.equalsIgnoreCase(title)) {
+                    return true;
+                }
+            }
+        }
+
+        // Method 3: Check EXTRA_SUB_TEXT which WhatsApp sets to group name
+        CharSequence subText = extras.getCharSequence(Notification.EXTRA_SUB_TEXT);
+        if (subText != null && !subText.toString().isEmpty()) {
+            return true;
+        }
+
+        return false;
     }
 }
