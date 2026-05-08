@@ -40,6 +40,8 @@ class AppProvider with ChangeNotifier {
     await loadSettings();
     await loadMessages();
     _subscribeToMessageStream();
+    // Sync settings to native Android on startup
+    await _syncNativeSettings(_settings);
   }
 
   /// Subscribe to incoming notifications from Android
@@ -73,7 +75,29 @@ class AppProvider with ChangeNotifier {
     await _ttsService.setSpeechRate(newSettings.speechRate);
     await _ttsService.setPitch(newSettings.speechPitch);
     await _ttsService.setVolume(newSettings.speechVolume);
+    // Sync critical settings to Android SharedPreferences for native services
+    await _syncNativeSettings(newSettings);
     notifyListeners();
+  }
+
+  /// Sync settings to Android SharedPreferences so native Java services can read them
+  Future<void> _syncNativeSettings(AppSettings settings) async {
+    try {
+      await NotificationService.instance.syncSettings({
+        'skip_group_messages': settings.skipGroupMessages,
+        'driving_mode': settings.drivingModeEnabled,
+        'dnd_enabled': settings.dndEnabled,
+        'dnd_start_hour': settings.dndStartHour,
+        'dnd_end_hour': settings.dndEndHour,
+        'readWhatsApp': settings.readWhatsApp,
+        'readSms': settings.readSms,
+        'readTelegram': settings.readTelegram,
+        'readMessenger': settings.readMessenger,
+        'readInstagram': settings.readInstagram,
+      });
+    } catch (e) {
+      print('Error syncing native settings: $e');
+    }
   }
 
   /// Load messages from database

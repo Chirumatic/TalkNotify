@@ -1,7 +1,9 @@
 package com.example.talknotify;
 
 import android.content.ComponentName;
+import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Build;
 import android.provider.Settings;
 import android.text.TextUtils;
@@ -18,12 +20,13 @@ import java.util.Map;
 
 /**
  * Main Android Activity.
- * Sets up MethodChannel and EventChannel bridges between Flutter and native Android.
+ * Bridges Flutter (Dart) and Android native (Java).
  */
 public class MainActivity extends FlutterActivity {
 
     private static final String METHOD_CHANNEL = "com.example.talknotify/notifications";
     private static final String EVENT_CHANNEL  = "com.example.talknotify/message_stream";
+    private static final String PREFS_NAME     = "talknotify_prefs";
 
     private EventChannel.EventSink eventSink;
 
@@ -31,7 +34,7 @@ public class MainActivity extends FlutterActivity {
     public void configureFlutterEngine(@NonNull FlutterEngine flutterEngine) {
         super.configureFlutterEngine(flutterEngine);
 
-        // Start foreground service so TTS works when app is closed
+        // Start foreground service
         Intent serviceIntent = new Intent(this, TalkNotifyForegroundService.class);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             startForegroundService(serviceIntent);
@@ -39,7 +42,7 @@ public class MainActivity extends FlutterActivity {
             startService(serviceIntent);
         }
 
-        // --- Method Channel: permission checks and service control ---
+        // Method Channel
         new MethodChannel(flutterEngine.getDartExecutor().getBinaryMessenger(), METHOD_CHANNEL)
             .setMethodCallHandler((call, result) -> {
                 switch (call.method) {
@@ -58,12 +61,20 @@ public class MainActivity extends FlutterActivity {
                         NotificationListener.callback = null;
                         result.success(true);
                         break;
+                    case "syncSettings":
+                        // Save Flutter settings to Android SharedPreferences
+                        // so native services (NotificationListener, ForegroundService) can read them
+                        if (call.arguments instanceof Map) {
+                            syncNativeSettings((Map<?, ?>) call.arguments);
+                        }
+                        result.success(true);
+                        break;
                     default:
                         result.notImplemented();
                 }
             });
 
-        // --- Event Channel: stream incoming messages to Flutter ---
+        // Event Channel — streams messages to Flutter
         new EventChannel(flutterEngine.getDartExecutor().getBinaryMessenger(), EVENT_CHANNEL)
             .setStreamHandler(new EventChannel.StreamHandler() {
                 @Override
@@ -80,7 +91,31 @@ public class MainActivity extends FlutterActivity {
             });
     }
 
-    /** Register the callback that forwards notifications to Flutter */
+    /**
+     * Save settings from Flutter into Android SharedPreferences.
+     * This allows NotificationListener and ForegroundService to read them
+     * even when Flutter is not running.
+     */
+    private void syncNativeSettings(Map<?, ?> settings) {
+        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        SharedPreferences.Editor editor = prefs.edit();
+
+        for (Map.Entry<?, ?> entry : settings.entrySet()) {
+            String key = entry.getKey().toString();
+            Object value = entry.getValue();
+
+            if (value instanceof Boolean) {
+                editor.putBoolean(key, (Boolean) value);
+            } else if (value instanceof Integer) {
+                editor.putInt(key, (Integer) value);
+            } else if (value instanceof String) {
+                editor.putString(key, (String) value);
+            }
+        }
+
+        editor.apply();
+    }
+
     private void registerNotificationCallback() {
         NotificationListener.callback = (sender, message, appSource) -> {
             if (eventSink != null) {
@@ -95,26 +130,19 @@ public class MainActivity extends FlutterActivity {
         };
     }
 
-    /** Check if notification listener permission is granted */
     private boolean isNotificationAccessGranted() {
         String pkgName = getPackageName();
         String flat = Settings.Secure.getString(
-            getContentResolver(),
-            "enabled_notification_listeners"
-        );
+            getContentResolver(), "enabled_notification_listeners");
         if (!TextUtils.isEmpty(flat)) {
-            String[] names = flat.split(":");
-            for (String name : names) {
+            for (String name : flat.split(":")) {
                 ComponentName cn = ComponentName.unflattenFromString(name);
-                if (cn != null && pkgName.equals(cn.getPackageName())) {
-                    return true;
-                }
+                if (cn != null && pkgName.equals(cn.getPackageName())) return true;
             }
         }
         return false;
     }
 
-    /** Open Android notification access settings page */
     private void openNotificationAccessSettings() {
         Intent intent = new Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS);
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
