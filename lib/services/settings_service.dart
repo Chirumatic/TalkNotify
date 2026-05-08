@@ -32,6 +32,7 @@ class SettingsService {
     await _prefs!.setString('autoReplyMessage', s.autoReplyMessage);
     await _prefs!.setBool('autoReplyEnabled', s.autoReplyEnabled);
     await _prefs!.setBool('skipGroupMessages', s.skipGroupMessages);
+    await _prefs!.setBool('backgroundListeningEnabled', s.backgroundListeningEnabled);
   }
 
   Future<AppSettings> loadSettings() async {
@@ -57,6 +58,7 @@ class SettingsService {
       autoReplyMessage: _prefs!.getString('autoReplyMessage') ?? "I'm driving, will reply soon.",
       autoReplyEnabled: _prefs!.getBool('autoReplyEnabled') ?? false,
       skipGroupMessages: _prefs!.getBool('skipGroupMessages') ?? false,
+      backgroundListeningEnabled: _prefs!.getBool('backgroundListeningEnabled') ?? false,
     );
   }
 

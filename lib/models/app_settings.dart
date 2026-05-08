@@ -24,6 +24,8 @@ class AppSettings {
   final bool autoReplyEnabled;
   // Group message filter
   final bool skipGroupMessages;
+  // Background voice commands
+  final bool backgroundListeningEnabled;
 
   AppSettings({
     this.voiceAlertsEnabled = true,
@@ -46,6 +48,7 @@ class AppSettings {
     this.autoReplyMessage = "I'm driving, will reply soon.",
     this.autoReplyEnabled = false,
     this.skipGroupMessages = false,
+    this.backgroundListeningEnabled = false,
   });
 
   /// Check if a given app source is enabled
@@ -95,6 +98,7 @@ class AppSettings {
     String? autoReplyMessage,
     bool? autoReplyEnabled,
     bool? skipGroupMessages,
+    bool? backgroundListeningEnabled,
   }) {
     return AppSettings(
       voiceAlertsEnabled: voiceAlertsEnabled ?? this.voiceAlertsEnabled,
@@ -117,6 +121,7 @@ class AppSettings {
       autoReplyMessage: autoReplyMessage ?? this.autoReplyMessage,
       autoReplyEnabled: autoReplyEnabled ?? this.autoReplyEnabled,
       skipGroupMessages: skipGroupMessages ?? this.skipGroupMessages,
+      backgroundListeningEnabled: backgroundListeningEnabled ?? this.backgroundListeningEnabled,
     );
   }
 
@@ -142,6 +147,7 @@ class AppSettings {
       'autoReplyMessage': autoReplyMessage,
       'autoReplyEnabled': autoReplyEnabled,
       'skipGroupMessages': skipGroupMessages,
+      'backgroundListeningEnabled': backgroundListeningEnabled,
     };
   }
 
@@ -167,6 +173,7 @@ class AppSettings {
       autoReplyMessage: map['autoReplyMessage'] ?? "I'm driving, will reply soon.",
       autoReplyEnabled: map['autoReplyEnabled'] ?? false,
       skipGroupMessages: map['skipGroupMessages'] ?? false,
+      backgroundListeningEnabled: map['backgroundListeningEnabled'] ?? false,
     );
   }
 }

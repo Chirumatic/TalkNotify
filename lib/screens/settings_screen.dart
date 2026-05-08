@@ -151,6 +151,22 @@ class SettingsScreen extends StatelessWidget {
           _SectionHeader(title: 'Alerts'),
           Card(child: Column(children: [
             SwitchListTile(
+              title: const Text('Background Voice Commands'),
+              subtitle: const Text('Speak commands even when app is closed'),
+              secondary: const Icon(Icons.mic_external_on, color: Colors.deepPurple),
+              value: settings.backgroundListeningEnabled,
+              onChanged: (v) => provider.saveSettings(
+                settings.copyWith(backgroundListeningEnabled: v)),
+            ),
+            if (settings.backgroundListeningEnabled)
+              const Padding(
+                padding: EdgeInsets.fromLTRB(16, 0, 16, 12),
+                child: Text(
+                  '🎙 App will listen for voice commands in the background. Uses more battery.',
+                  style: TextStyle(fontSize: 12, color: Colors.deepPurple)),
+              ),
+            const Divider(height: 1),
+            SwitchListTile(
               title: const Text('Voice Alerts'),
               subtitle: const Text('Say "You have a new message"'),
               secondary: const Icon(Icons.record_voice_over),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../utils/constants.dart';
@@ -6,7 +7,6 @@ import '../widgets/message_card.dart';
 import 'history_screen.dart';
 import 'settings_screen.dart';
 
-/// Main home screen of TalkNotify
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -29,30 +29,20 @@ class _HomeScreenState extends State<HomeScreen> {
       body: _pages[_currentIndex],
       bottomNavigationBar: NavigationBar(
         selectedIndex: _currentIndex,
-        onDestinationSelected: (index) => setState(() => _currentIndex = index),
+        onDestinationSelected: (i) => setState(() => _currentIndex = i),
         destinations: const [
           NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home),
-            label: 'Home',
-          ),
+            icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: 'Home'),
           NavigationDestination(
-            icon: Icon(Icons.history_outlined),
-            selectedIcon: Icon(Icons.history),
-            label: 'History',
-          ),
+            icon: Icon(Icons.history_outlined), selectedIcon: Icon(Icons.history), label: 'History'),
           NavigationDestination(
-            icon: Icon(Icons.settings_outlined),
-            selectedIcon: Icon(Icons.settings),
-            label: 'Settings',
-          ),
+            icon: Icon(Icons.settings_outlined), selectedIcon: Icon(Icons.settings), label: 'Settings'),
         ],
       ),
     );
   }
 }
 
-/// Dashboard tab — shows latest message and voice controls
 class _DashboardTab extends StatelessWidget {
   const _DashboardTab();
 
@@ -61,134 +51,213 @@ class _DashboardTab extends StatelessWidget {
     final provider = context.watch<AppProvider>();
     final latest = provider.latestMessage;
     final isListening = provider.isListening;
+    final isDriving = provider.settings.drivingModeEnabled;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Row(
-          children: [
-            const Icon(Icons.record_voice_over, color: Colors.white),
-            const SizedBox(width: 8),
-            const Text(
-              AppConstants.appName,
-              style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+      body: CustomScrollView(
+        slivers: [
+          // Modern gradient app bar
+          SliverAppBar(
+            expandedHeight: 140,
+            pinned: true,
+            flexibleSpace: FlexibleSpaceBar(
+              background: Container(
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [Color(0xFF1565C0), Color(0xFF2196F3)],
+                  ),
+                ),
+                child: SafeArea(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(Icons.record_voice_over_rounded,
+                              color: Colors.white, size: 26),
+                            const SizedBox(width: 10),
+                            const Text('TalkNotify',
+                              style: TextStyle(fontSize: 22,
+                                fontWeight: FontWeight.w800, color: Colors.white)),
+                            const Spacer(),
+                            // Status indicator
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Row(children: [
+                                Container(width: 7, height: 7,
+                                  decoration: const BoxDecoration(
+                                    color: Colors.greenAccent,
+                                    shape: BoxShape.circle)),
+                                const SizedBox(width: 5),
+                                const Text('Active',
+                                  style: TextStyle(color: Colors.white,
+                                    fontSize: 11, fontWeight: FontWeight.w500)),
+                              ]),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          isDriving
+                            ? '🚗 Driving mode — reading all messages'
+                            : 'Say "Hey TalkNotify" to get started',
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.85), fontSize: 13),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
             ),
-          ],
-        ),
-        actions: [
-          // Notification listener status indicator
-          Padding(
-            padding: const EdgeInsets.only(right: 12),
-            child: Icon(
-              Icons.circle,
-              size: 12,
-              color: Colors.greenAccent,
+          ),
+
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.all(AppConstants.paddingMedium),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Stats row
+                  _StatsRow(provider: provider),
+                  const SizedBox(height: 20),
+
+                  // Driving mode banner
+                  if (isDriving) ...[
+                    _DrivingModeBanner(provider: provider),
+                    const SizedBox(height: 20),
+                  ],
+
+                  // Voice command bubble
+                  if (provider.recognizedText.isNotEmpty) ...[
+                    _RecognizedTextBubble(text: provider.recognizedText),
+                    const SizedBox(height: 12),
+                  ],
+
+                  // Action buttons
+                  _ActionGrid(isListening: isListening, isDriving: isDriving),
+                  const SizedBox(height: 20),
+
+                  // Latest message
+                  _LatestMessageSection(latest: latest),
+                  const SizedBox(height: 20),
+
+                  // Summary button
+                  _SummaryButton(),
+                  const SizedBox(height: 20),
+
+                  // Voice commands card
+                  const _VoiceCommandsCard(),
+                  const SizedBox(height: 20),
+                ],
+              ),
             ),
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(AppConstants.paddingMedium),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Latest message card
-            _LatestMessageSection(latest: latest),
-            const SizedBox(height: 24),
-
-            // Voice command display
-            if (provider.recognizedText.isNotEmpty)
-              _RecognizedTextBubble(text: provider.recognizedText),
-
-            const SizedBox(height: 8),
-
-            // Action buttons
-            _ActionButtons(isListening: isListening),
-
-            const SizedBox(height: 24),
-
-            // Quick stats
-            _QuickStats(provider: provider),
-
-            const SizedBox(height: 16),
-
-            // Message summary button
-            _MessageSummaryButton(),
-
-            const SizedBox(height: 16),
-
-            // Wake word hint
-            _WakeWordHint(),
-
-            const SizedBox(height: 16),
-
-            // Voice commands help
-            const _VoiceCommandsHelp(),
-          ],
-        ),
-      ),
     );
   }
 }
 
-/// Shows the latest received message
-class _LatestMessageSection extends StatelessWidget {
-  final dynamic latest;
-  const _LatestMessageSection({required this.latest});
+class _StatsRow extends StatelessWidget {
+  final AppProvider provider;
+  const _StatsRow({required this.provider});
 
   @override
   Widget build(BuildContext context) {
-    if (latest == null) {
-      return Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(AppConstants.paddingLarge),
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(AppConstants.radiusLarge),
-        ),
-        child: Column(
-          children: [
-            Icon(
-              Icons.notifications_none,
-              size: 48,
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'No messages yet',
-              style: TextStyle(
-                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
-                fontSize: 16,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Messages from WhatsApp, SMS, Telegram\nwill appear here',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.35),
-                fontSize: 13,
-              ),
-            ),
-          ],
-        ),
-      );
-    }
+    final total = provider.messageHistory.length;
+    final unread = provider.messageHistory.where((m) => !m.isRead).length;
+    final today = provider.messageHistory.where((m) {
+      final now = DateTime.now();
+      return m.timestamp.day == now.day && m.timestamp.month == now.month;
+    }).length;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text('Latest Message', style: AppConstants.subheadingStyle),
-        const SizedBox(height: 8),
-        MessageCard(
-          message: latest,
-          onRead: () => context.read<AppProvider>().readLatestMessage(),
-        ),
-      ],
+    return Row(children: [
+      Expanded(child: _StatTile(label: 'Total', value: '$total',
+        icon: Icons.inbox_rounded, color: AppConstants.primaryColor)),
+      const SizedBox(width: 10),
+      Expanded(child: _StatTile(label: 'Unread', value: '$unread',
+        icon: Icons.mark_email_unread_rounded, color: Colors.orange)),
+      const SizedBox(width: 10),
+      Expanded(child: _StatTile(label: 'Today', value: '$today',
+        icon: Icons.today_rounded, color: Colors.teal)),
+    ]);
+  }
+}
+
+class _StatTile extends StatelessWidget {
+  final String label;
+  final String value;
+  final IconData icon;
+  final Color color;
+  const _StatTile({required this.label, required this.value,
+    required this.icon, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
+        border: Border.all(color: color.withOpacity(0.2)),
+      ),
+      child: Column(children: [
+        Icon(icon, color: color, size: 22),
+        const SizedBox(height: 6),
+        Text(value, style: TextStyle(fontSize: 20,
+          fontWeight: FontWeight.bold, color: color)),
+        Text(label, style: TextStyle(fontSize: 11,
+          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5))),
+      ]),
     );
   }
 }
 
-/// Bubble showing recognized voice text
+class _DrivingModeBanner extends StatelessWidget {
+  final AppProvider provider;
+  const _DrivingModeBanner({required this.provider});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFFFF6F00), Color(0xFFFF8F00)]),
+        borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
+      ),
+      child: Row(children: [
+        const Icon(Icons.directions_car_rounded, color: Colors.white, size: 28),
+        const SizedBox(width: 12),
+        const Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('Driving Mode Active', style: TextStyle(
+              color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+            Text('All messages read aloud automatically',
+              style: TextStyle(color: Colors.white70, fontSize: 12)),
+          ]),
+        ),
+        TextButton(
+          onPressed: () => provider.saveSettings(
+            provider.settings.copyWith(drivingModeEnabled: false)),
+          child: const Text('Turn Off',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        ),
+      ]),
+    );
+  }
+}
+
 class _RecognizedTextBubble extends StatelessWidget {
   final String text;
   const _RecognizedTextBubble({required this.text});
@@ -196,277 +265,229 @@ class _RecognizedTextBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(AppConstants.paddingMedium),
-      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppConstants.primaryColor.withOpacity(0.1),
+        color: AppConstants.primaryColor.withOpacity(0.08),
         borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
-        border: Border.all(color: AppConstants.primaryColor.withOpacity(0.3)),
+        border: Border.all(color: AppConstants.primaryColor.withOpacity(0.25)),
       ),
-      child: Row(
-        children: [
-          const Icon(Icons.mic, color: AppConstants.primaryColor, size: 18),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              '"$text"',
-              style: const TextStyle(
-                color: AppConstants.primaryColor,
-                fontStyle: FontStyle.italic,
-              ),
-            ),
-          ),
-        ],
-      ),
+      child: Row(children: [
+        const Icon(Icons.mic_rounded, color: AppConstants.primaryColor, size: 18),
+        const SizedBox(width: 8),
+        Expanded(child: Text('"$text"',
+          style: const TextStyle(color: AppConstants.primaryColor,
+            fontStyle: FontStyle.italic, fontSize: 13))),
+      ]),
     );
   }
 }
 
-/// Main action buttons
-class _ActionButtons extends StatelessWidget {
+class _ActionGrid extends StatelessWidget {
   final bool isListening;
-  const _ActionButtons({required this.isListening});
+  final bool isDriving;
+  const _ActionGrid({required this.isListening, required this.isDriving});
 
   @override
   Widget build(BuildContext context) {
     final provider = context.read<AppProvider>();
 
-    return Column(
-      children: [
-        // Read / Stop row
-        Row(
-          children: [
-            Expanded(
-              child: _ActionButton(
-                icon: Icons.volume_up,
-                label: 'Read Message',
-                color: AppConstants.primaryColor,
-                onTap: () => provider.readLatestMessage(),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _ActionButton(
-                icon: Icons.stop_circle_outlined,
-                label: 'Stop Reading',
-                color: Colors.redAccent,
-                onTap: () => provider.stopReading(),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        // Listen toggle
-        SizedBox(
-          width: double.infinity,
-          child: _ActionButton(
-            icon: isListening ? Icons.mic_off : Icons.mic,
-            label: isListening ? 'Stop Listening' : 'Start Listening',
-            color: isListening ? Colors.orange : AppConstants.successColor,
-            onTap: () {
-              if (isListening) {
-                provider.stopListening();
-              } else {
-                provider.startListening();
-              }
-            },
-          ),
-        ),
-        const SizedBox(height: 12),
-        // Driving mode toggle
-        SizedBox(
-          width: double.infinity,
-          child: _ActionButton(
-            icon: Icons.directions_car,
-            label: context.watch<AppProvider>().settings.drivingModeEnabled
-                ? '🚗 Driving Mode ON'
-                : 'Enable Driving Mode',
-            color: context.watch<AppProvider>().settings.drivingModeEnabled
-                ? Colors.orange
-                : Colors.blueGrey,
-            onTap: () {
-              final s = provider.settings;
-              provider.saveSettings(s.copyWith(drivingModeEnabled: !s.drivingModeEnabled));
-            },
-          ),
-        ),
-      ],
-    );
+    return Column(children: [
+      Row(children: [
+        Expanded(child: _ActionBtn(
+          icon: Icons.volume_up_rounded,
+          label: 'Read Message',
+          color: AppConstants.primaryColor,
+          onTap: () => provider.readLatestMessage(),
+        )),
+        const SizedBox(width: 10),
+        Expanded(child: _ActionBtn(
+          icon: Icons.stop_circle_rounded,
+          label: 'Stop',
+          color: Colors.redAccent,
+          onTap: () => provider.stopReading(),
+        )),
+      ]),
+      const SizedBox(height: 10),
+      Row(children: [
+        Expanded(child: _ActionBtn(
+          icon: isListening ? Icons.mic_off_rounded : Icons.mic_rounded,
+          label: isListening ? 'Stop Listening' : 'Listen',
+          color: isListening ? Colors.orange : AppConstants.successColor,
+          onTap: () => isListening
+            ? provider.stopListening()
+            : provider.startListening(),
+        )),
+        const SizedBox(width: 10),
+        Expanded(child: _ActionBtn(
+          icon: Icons.directions_car_rounded,
+          label: isDriving ? 'Driving ON' : 'Drive Mode',
+          color: isDriving ? Colors.orange : Colors.blueGrey,
+          onTap: () => provider.saveSettings(
+            provider.settings.copyWith(drivingModeEnabled: !isDriving)),
+        )),
+      ]),
+    ]);
   }
 }
 
-/// Reusable action button
-class _ActionButton extends StatelessWidget {
+class _ActionBtn extends StatelessWidget {
   final IconData icon;
   final String label;
   final Color color;
   final VoidCallback onTap;
-
-  const _ActionButton({
-    required this.icon,
-    required this.label,
-    required this.color,
-    required this.onTap,
-  });
+  const _ActionBtn({required this.icon, required this.label,
+    required this.color, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
     return ElevatedButton.icon(
       onPressed: onTap,
-      icon: Icon(icon, size: 20),
-      label: Text(label),
+      icon: Icon(icon, size: 18),
+      label: Text(label, style: const TextStyle(fontSize: 13)),
       style: ElevatedButton.styleFrom(
         backgroundColor: color,
         foregroundColor: Colors.white,
         padding: const EdgeInsets.symmetric(vertical: 14),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
-        ),
-        elevation: 2,
+          borderRadius: BorderRadius.circular(AppConstants.radiusMedium)),
+        elevation: 0,
       ),
     );
   }
 }
 
-/// Quick stats row
-class _QuickStats extends StatelessWidget {
-  final AppProvider provider;
-  const _QuickStats({required this.provider});
+class _LatestMessageSection extends StatelessWidget {
+  final dynamic latest;
+  const _LatestMessageSection({required this.latest});
 
   @override
   Widget build(BuildContext context) {
-    final total = provider.messageHistory.length;
-    final unread = provider.messageHistory.where((m) => !m.isRead).length;
-
-    return Row(
-      children: [
-        Expanded(child: _StatCard(label: 'Total', value: '$total', icon: Icons.inbox)),
-        const SizedBox(width: 12),
-        Expanded(child: _StatCard(label: 'Unread', value: '$unread', icon: Icons.mark_email_unread)),
-      ],
-    );
-  }
-}
-
-class _StatCard extends StatelessWidget {
-  final String label;
-  final String value;
-  final IconData icon;
-
-  const _StatCard({required this.label, required this.value, required this.icon});
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(AppConstants.paddingMedium),
-        child: Row(
-          children: [
-            Icon(icon, color: AppConstants.primaryColor, size: 28),
-            const SizedBox(width: 12),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(value, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-                Text(label, style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5))),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// Voice commands reference card
-class _VoiceCommandsHelp extends StatelessWidget {
-  const _VoiceCommandsHelp();
-
-  @override
-  Widget build(BuildContext context) {
-    const commands = [
-      '"Read my message"',
-      '"Read latest message"',
-      '"Who texted me?"',
-      '"Read WhatsApp message"',
-      '"Read Telegram message"',
-      '"Read SMS"',
-      '"Stop reading"',
-      '"Repeat message"',
-      '"How many messages?"',
-      '"Driving mode on/off"',
-      '"Hey TalkNotify"',
-    ];
-
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(AppConstants.paddingMedium),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: const [
-                Icon(Icons.help_outline, color: AppConstants.primaryColor, size: 18),
-                SizedBox(width: 8),
-                Text('Voice Commands', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-              ],
-            ),
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Row(children: [
+        const Text('Latest Message',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        const Spacer(),
+        if (latest != null)
+          Text(DateFormat('hh:mm a').format(latest.timestamp),
+            style: TextStyle(fontSize: 12,
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.4))),
+      ]),
+      const SizedBox(height: 10),
+      if (latest == null)
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(28),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surfaceContainerHighest,
+            borderRadius: BorderRadius.circular(AppConstants.radiusLarge),
+          ),
+          child: Column(children: [
+            Icon(Icons.notifications_none_rounded, size: 44,
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.25)),
             const SizedBox(height: 10),
-            ...commands.map((cmd) => Padding(
-              padding: const EdgeInsets.symmetric(vertical: 2),
-              child: Row(
-                children: [
-                  const Icon(Icons.chevron_right, size: 16, color: AppConstants.primaryColor),
-                  const SizedBox(width: 4),
-                  Text(cmd, style: const TextStyle(fontSize: 13)),
-                ],
-              ),
-            )),
-          ],
+            Text('No messages yet',
+              style: TextStyle(fontSize: 15,
+                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.4))),
+            const SizedBox(height: 4),
+            Text('WhatsApp, SMS, Telegram messages\nwill appear here',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 12,
+                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3))),
+          ]),
+        )
+      else
+        MessageCard(
+          message: latest,
+          onRead: () => context.read<AppProvider>().readLatestMessage(),
         ),
-      ),
-    );
+    ]);
   }
 }
 
-/// Button to hear a spoken summary of unread messages
-class _MessageSummaryButton extends StatelessWidget {
+class _SummaryButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final provider = context.read<AppProvider>();
-    final unread = context.watch<AppProvider>().messageHistory.where((m) => !m.isRead).length;
+    final unread = context.watch<AppProvider>()
+      .messageHistory.where((m) => !m.isRead).length;
 
     return OutlinedButton.icon(
       onPressed: () => provider.speakMessageSummary(),
-      icon: const Icon(Icons.summarize),
-      label: Text('Summarize ($unread unread)'),
+      icon: const Icon(Icons.summarize_rounded),
+      label: Text('Summarize Messages ($unread unread)'),
       style: OutlinedButton.styleFrom(
         minimumSize: const Size(double.infinity, 48),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppConstants.radiusMedium)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppConstants.radiusMedium)),
       ),
     );
   }
 }
 
-/// Small hint showing the wake word
-class _WakeWordHint extends StatelessWidget {
+class _VoiceCommandsCard extends StatefulWidget {
+  const _VoiceCommandsCard();
+
+  @override
+  State<_VoiceCommandsCard> createState() => _VoiceCommandsCardState();
+}
+
+class _VoiceCommandsCardState extends State<_VoiceCommandsCard> {
+  bool _expanded = false;
+
+  static const _commands = [
+    (Icons.volume_up_rounded, '"Read my message"'),
+    (Icons.person_rounded, '"Who texted me?"'),
+    (Icons.chat_rounded, '"Read WhatsApp message"'),
+    (Icons.send_rounded, '"Read Telegram message"'),
+    (Icons.sms_rounded, '"Read SMS"'),
+    (Icons.stop_rounded, '"Stop reading"'),
+    (Icons.replay_rounded, '"Repeat message"'),
+    (Icons.bar_chart_rounded, '"Summarize my messages"'),
+    (Icons.directions_car_rounded, '"Driving mode on/off"'),
+    (Icons.mic_rounded, '"Hey TalkNotify"'),
+  ];
+
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: AppConstants.primaryColor.withOpacity(0.08),
-        borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: const [
-          Icon(Icons.mic_none, size: 16, color: AppConstants.primaryColor),
-          SizedBox(width: 6),
-          Text('Say "Hey TalkNotify" to activate',
-            style: TextStyle(fontSize: 12, color: AppConstants.primaryColor)),
-        ],
+    final shown = _expanded ? _commands : _commands.take(4).toList();
+
+    return Card(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppConstants.radiusLarge)),
+      child: Padding(
+        padding: const EdgeInsets.all(AppConstants.paddingMedium),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: AppConstants.primaryColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(Icons.mic_rounded,
+                color: AppConstants.primaryColor, size: 18),
+            ),
+            const SizedBox(width: 10),
+            const Text('Voice Commands',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+            const Spacer(),
+            TextButton(
+              onPressed: () => setState(() => _expanded = !_expanded),
+              child: Text(_expanded ? 'Less' : 'More',
+                style: const TextStyle(fontSize: 12)),
+            ),
+          ]),
+          const SizedBox(height: 8),
+          ...shown.map((cmd) => Padding(
+            padding: const EdgeInsets.symmetric(vertical: 3),
+            child: Row(children: [
+              Icon(cmd.$1, size: 15,
+                color: AppConstants.primaryColor.withOpacity(0.7)),
+              const SizedBox(width: 8),
+              Text(cmd.$2, style: const TextStyle(fontSize: 13)),
+            ]),
+          )),
+        ]),
       ),
     );
   }

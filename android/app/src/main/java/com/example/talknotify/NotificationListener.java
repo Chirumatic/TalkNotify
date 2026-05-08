@@ -97,6 +97,9 @@ public class NotificationListener extends NotificationListenerService {
         if (TalkNotifyForegroundService.instance != null && !message.isEmpty()) {
             TalkNotifyForegroundService.instance.announceMessage(sender, appSource, message);
         }
+
+        // Update home screen widget
+        TalkNotifyWidget.updateWidgets(this, sender, message, appSource);
     }
 
     @Override

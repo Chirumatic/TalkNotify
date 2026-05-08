@@ -94,6 +94,7 @@ class AppProvider with ChangeNotifier {
         'readTelegram': settings.readTelegram,
         'readMessenger': settings.readMessenger,
         'readInstagram': settings.readInstagram,
+        'background_listening': settings.backgroundListeningEnabled,
       });
     } catch (e) {
       print('Error syncing native settings: $e');
