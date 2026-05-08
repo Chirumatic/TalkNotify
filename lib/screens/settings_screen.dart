@@ -21,6 +21,89 @@ class SettingsScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(AppConstants.paddingMedium),
         children: [
+          // --- Driving Mode ---
+          _SectionHeader(title: 'Driving Mode'),
+          Card(
+            child: Column(
+              children: [
+                SwitchListTile(
+                  title: const Text('Driving Mode'),
+                  subtitle: const Text('Auto-read every message aloud'),
+                  secondary: const Icon(Icons.directions_car, color: Colors.orange),
+                  value: settings.drivingModeEnabled,
+                  onChanged: (val) => provider.saveSettings(
+                    settings.copyWith(drivingModeEnabled: val),
+                  ),
+                ),
+                if (settings.drivingModeEnabled)
+                  const Padding(
+                    padding: EdgeInsets.fromLTRB(16, 0, 16, 12),
+                    child: Text(
+                      '🚗 All incoming messages will be read aloud automatically. Say "Driving mode off" to disable.',
+                      style: TextStyle(fontSize: 12, color: Colors.orange),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // --- Do Not Disturb ---
+          _SectionHeader(title: 'Do Not Disturb'),
+          Card(
+            child: Column(
+              children: [
+                SwitchListTile(
+                  title: const Text('Do Not Disturb'),
+                  subtitle: Text(
+                    settings.dndEnabled
+                        ? 'Silent from ${settings.dndStartHour}:00 to ${settings.dndEndHour}:00'
+                        : 'Silence alerts during set hours',
+                  ),
+                  secondary: const Icon(Icons.do_not_disturb_on, color: Colors.red),
+                  value: settings.dndEnabled,
+                  onChanged: (val) => provider.saveSettings(
+                    settings.copyWith(dndEnabled: val),
+                  ),
+                ),
+                if (settings.dndEnabled) ...[
+                  const Divider(height: 1),
+                  ListTile(
+                    leading: const Icon(Icons.bedtime),
+                    title: const Text('Start time'),
+                    trailing: DropdownButton<int>(
+                      value: settings.dndStartHour,
+                      items: List.generate(24, (i) => DropdownMenuItem(
+                        value: i,
+                        child: Text('${i.toString().padLeft(2, '0')}:00'),
+                      )),
+                      onChanged: (val) => provider.saveSettings(
+                        settings.copyWith(dndStartHour: val),
+                      ),
+                    ),
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.wb_sunny),
+                    title: const Text('End time'),
+                    trailing: DropdownButton<int>(
+                      value: settings.dndEndHour,
+                      items: List.generate(24, (i) => DropdownMenuItem(
+                        value: i,
+                        child: Text('${i.toString().padLeft(2, '0')}:00'),
+                      )),
+                      onChanged: (val) => provider.saveSettings(
+                        settings.copyWith(dndEndHour: val),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
           // --- Alerts Section ---
           _SectionHeader(title: 'Alerts'),
           Card(

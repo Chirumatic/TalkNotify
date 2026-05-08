@@ -5,7 +5,9 @@ import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
+import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Build;
 import android.os.IBinder;
 import android.speech.tts.TextToSpeech;
@@ -13,6 +15,7 @@ import android.util.Log;
 
 import androidx.core.app.NotificationCompat;
 
+import java.util.Calendar;
 import java.util.Locale;
 
 /**
@@ -40,9 +43,10 @@ public class TalkNotifyForegroundService extends Service implements TextToSpeech
         // Initialize native TTS
         tts = new TextToSpeech(this, this);
 
-        // Register notification callback
+        // Register notification callback — now passes full message content
         NotificationListener.callback = (sender, message, appSource) -> {
-            announceMessage(sender, appSource);
+            if (isDndActive()) return; // Respect Do Not Disturb hours
+            announceMessage(sender, appSource, message);
         };
 
         Log.d(TAG, "TalkNotify foreground service started");
@@ -83,11 +87,17 @@ public class TalkNotifyForegroundService extends Service implements TextToSpeech
         }
     }
 
-    /** Announce incoming message aloud */
-    public void announceMessage(String sender, String appSource) {
+    /** Announce incoming message aloud — reads full message content */
+    public void announceMessage(String sender, String appSource, String message) {
         if (!ttsReady || tts == null) return;
 
-        String announcement = "New " + appSource + " message from " + sender;
+        String announcement;
+        if (message != null && !message.isEmpty()) {
+            announcement = "New " + appSource + " message from " + sender + ". " + message;
+        } else {
+            announcement = "New " + appSource + " message from " + sender;
+        }
+
         Log.d(TAG, "Announcing: " + announcement);
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
@@ -109,7 +119,7 @@ public class TalkNotifyForegroundService extends Service implements TextToSpeech
 
         return new NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("TalkNotify is active")
-            .setContentText("Listening for incoming messages...")
+            .setContentText(isDrivingModeEnabled() ? "🚗 Driving mode ON — reading all messages" : "Listening for incoming messages...")
             .setSmallIcon(android.R.drawable.ic_btn_speak_now)
             .setContentIntent(pendingIntent)
             .setOngoing(true)
@@ -117,9 +127,44 @@ public class TalkNotifyForegroundService extends Service implements TextToSpeech
             .build();
     }
 
+    /** Check if Do Not Disturb hours are active */
+    private boolean isDndActive() {
+        SharedPreferences prefs = getSharedPreferences("talknotify_prefs", Context.MODE_PRIVATE);
+        boolean dndEnabled = prefs.getBoolean("dnd_enabled", false);
+        if (!dndEnabled) return false;
+
+        int dndStart = prefs.getInt("dnd_start_hour", 22); // default 10pm
+        int dndEnd   = prefs.getInt("dnd_end_hour", 6);    // default 6am
+
+        int currentHour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY);
+
+        if (dndStart > dndEnd) {
+            // Overnight range e.g. 22:00 - 06:00
+            return currentHour >= dndStart || currentHour < dndEnd;
+        } else {
+            return currentHour >= dndStart && currentHour < dndEnd;
+        }
+    }
+
+    /** Check if driving mode is enabled */
+    public boolean isDrivingModeEnabled() {
+        SharedPreferences prefs = getSharedPreferences("talknotify_prefs", Context.MODE_PRIVATE);
+        return prefs.getBoolean("driving_mode", false);
+    }
+
+    /** Set driving mode */
+    public void setDrivingMode(boolean enabled) {
+        SharedPreferences prefs = getSharedPreferences("talknotify_prefs", Context.MODE_PRIVATE);
+        prefs.edit().putBoolean("driving_mode", enabled).apply();
+        // Update foreground notification text
+        NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        if (manager != null) {
+            manager.notify(NOTIFICATION_ID, buildForegroundNotification());
+        }
+    }
+
     /** Create notification channel for Android 8+ */
-    private void createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+    private void createNotificationChannel() {        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel channel = new NotificationChannel(
                 CHANNEL_ID,
                 "TalkNotify Background Service",

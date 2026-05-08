@@ -92,6 +92,12 @@ class AppProvider with ChangeNotifier {
     _messageHistory.insert(0, savedMessage);
     notifyListeners();
 
+    // In driving mode — always read full message aloud
+    if (_settings.drivingModeEnabled) {
+      await _ttsService.readMessage(savedMessage);
+      return;
+    }
+
     // Alert user based on settings
     if (_settings.voiceAlertsEnabled) {
       await _ttsService.announceNewMessage();
@@ -161,27 +167,45 @@ class AppProvider with ChangeNotifier {
   Future<void> _processVoiceCommand(String command) async {
     final lowerCommand = command.toLowerCase();
 
-    if (lowerCommand.contains('read') && 
+    // Wake word check — "hey talknotify"
+    if (lowerCommand.contains('hey talknotify') || lowerCommand.contains('hey talk notify')) {
+      await _ttsService.speak('Yes, I am listening');
+      await startListening();
+      return;
+    }
+
+    if (lowerCommand.contains('read') &&
         (lowerCommand.contains('message') || lowerCommand.contains('latest'))) {
       await readLatestMessage();
-    } else if (lowerCommand.contains('who texted')) {
+    } else if (lowerCommand.contains('who texted') || lowerCommand.contains('who messaged')) {
       if (_latestMessage != null) {
-        await _ttsService.speak('${_latestMessage!.senderName} sent you a message');
+        await _ttsService.speak('${_latestMessage!.senderName} sent you a message via ${_latestMessage!.appSource}');
       }
     } else if (lowerCommand.contains('whatsapp')) {
-      final whatsappMessages = await _dbService.getMessagesByApp('WhatsApp');
-      if (whatsappMessages.isNotEmpty) {
-        await _ttsService.readMessage(whatsappMessages.first);
-      }
+      final msgs = await _dbService.getMessagesByApp('WhatsApp');
+      if (msgs.isNotEmpty) await _ttsService.readMessage(msgs.first);
     } else if (lowerCommand.contains('telegram')) {
-      final telegramMessages = await _dbService.getMessagesByApp('Telegram');
-      if (telegramMessages.isNotEmpty) {
-        await _ttsService.readMessage(telegramMessages.first);
-      }
+      final msgs = await _dbService.getMessagesByApp('Telegram');
+      if (msgs.isNotEmpty) await _ttsService.readMessage(msgs.first);
+    } else if (lowerCommand.contains('sms')) {
+      final msgs = await _dbService.getMessagesByApp('SMS');
+      if (msgs.isNotEmpty) await _ttsService.readMessage(msgs.first);
     } else if (lowerCommand.contains('stop')) {
       await stopReading();
     } else if (lowerCommand.contains('repeat')) {
       await readLatestMessage();
+    } else if (lowerCommand.contains('driving mode on')) {
+      await saveSettings(_settings.copyWith(drivingModeEnabled: true));
+      await _ttsService.speak('Driving mode activated. I will read all messages automatically.');
+    } else if (lowerCommand.contains('driving mode off')) {
+      await saveSettings(_settings.copyWith(drivingModeEnabled: false));
+      await _ttsService.speak('Driving mode deactivated.');
+    } else if (lowerCommand.contains('how many messages') || lowerCommand.contains('unread')) {
+      final unread = _messageHistory.where((m) => !m.isRead).length;
+      await _ttsService.speak('You have $unread unread messages.');
+    } else {
+      // Unknown command
+      await _ttsService.speak('Sorry, I did not understand that command.');
     }
   }
 

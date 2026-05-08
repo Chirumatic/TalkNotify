@@ -263,6 +263,24 @@ class _ActionButtons extends StatelessWidget {
             },
           ),
         ),
+        const SizedBox(height: 12),
+        // Driving mode toggle
+        SizedBox(
+          width: double.infinity,
+          child: _ActionButton(
+            icon: Icons.directions_car,
+            label: context.watch<AppProvider>().settings.drivingModeEnabled
+                ? '🚗 Driving Mode ON'
+                : 'Enable Driving Mode',
+            color: context.watch<AppProvider>().settings.drivingModeEnabled
+                ? Colors.orange
+                : Colors.blueGrey,
+            onTap: () {
+              final s = provider.settings;
+              provider.saveSettings(s.copyWith(drivingModeEnabled: !s.drivingModeEnabled));
+            },
+          ),
+        ),
       ],
     );
   }
@@ -363,8 +381,12 @@ class _VoiceCommandsHelp extends StatelessWidget {
       '"Who texted me?"',
       '"Read WhatsApp message"',
       '"Read Telegram message"',
+      '"Read SMS"',
       '"Stop reading"',
       '"Repeat message"',
+      '"How many messages?"',
+      '"Driving mode on/off"',
+      '"Hey TalkNotify"',
     ];
 
     return Card(
