@@ -69,6 +69,11 @@ public class NotificationListener extends NotificationListenerService {
         if (callback != null && !message.isEmpty()) {
             callback.onNotificationReceived(sender, message, appSource);
         }
+
+        // Also announce via foreground service TTS (works when app is closed)
+        if (TalkNotifyForegroundService.instance != null && !message.isEmpty()) {
+            TalkNotifyForegroundService.instance.announceMessage(sender, appSource);
+        }
     }
 
     @Override
