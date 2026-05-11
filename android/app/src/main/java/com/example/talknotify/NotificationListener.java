@@ -63,6 +63,12 @@ public class NotificationListener extends NotificationListenerService {
         // Skip group summary notifications (they are duplicates)
         if ((notification.flags & Notification.FLAG_GROUP_SUMMARY) != 0) return;
 
+        // Skip download/progress notifications
+        if (isDownloadNotification(notification, extras, message)) {
+            Log.d(TAG, "Skipping download notification");
+            return;
+        }
+
         // Detect group messages
         boolean isGroupMessage = isGroupMessage(extras, appSource, sender, message);
 
@@ -105,6 +111,53 @@ public class NotificationListener extends NotificationListenerService {
     @Override
     public void onNotificationRemoved(StatusBarNotification sbn) {
         // Not needed for now
+    }
+
+    /**
+     * Detect if a notification is a download/progress notification.
+     * WhatsApp shows these when downloading photos, videos, documents.
+     */
+    private boolean isDownloadNotification(Notification notification, Bundle extras, String message) {
+        // Method 1: Check if it's an ongoing/progress notification
+        // Download notifications are always ongoing and have a progress bar
+        if ((notification.flags & Notification.FLAG_ONGOING_EVENT) != 0) {
+            return true;
+        }
+
+        // Method 2: Check for progress indicator in extras
+        int progress = extras.getInt(Notification.EXTRA_PROGRESS, -1);
+        int progressMax = extras.getInt(Notification.EXTRA_PROGRESS_MAX, -1);
+        if (progress >= 0 && progressMax > 0) {
+            return true;
+        }
+
+        // Method 3: Check for indeterminate progress
+        boolean indeterminate = extras.getBoolean(Notification.EXTRA_PROGRESS_INDETERMINATE, false);
+        if (indeterminate) {
+            return true;
+        }
+
+        // Method 4: Message content patterns for downloads
+        String lowerMessage = message.toLowerCase();
+        if (lowerMessage.contains("downloading") ||
+            lowerMessage.contains("download") ||
+            lowerMessage.contains("uploading") ||
+            lowerMessage.contains("% complete") ||
+            lowerMessage.contains("kb/s") ||
+            lowerMessage.contains("mb/s") ||
+            lowerMessage.matches(".*\\d+%.*") ||
+            lowerMessage.matches(".*\\d+\\.\\d+ (kb|mb|gb).*")) {
+            return true;
+        }
+
+        // Method 5: Check notification category
+        String category = notification.category;
+        if (android.app.Notification.CATEGORY_PROGRESS.equals(category) ||
+            android.app.Notification.CATEGORY_SERVICE.equals(category)) {
+            return true;
+        }
+
+        return false;
     }
 
     /**
